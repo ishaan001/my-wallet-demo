@@ -98,14 +98,8 @@ app.post('/create', async (req, res) => {
   const token   = jwt.sign(claims, serviceAccount.private_key, { algorithm: 'RS256' });
   const saveUrl = `https://pay.google.com/gp/v/save/${token}`;
 
-  res.send(`
-    <h3>Your pass is ready!</h3>
-    <a href="${saveUrl}" target="_blank">
-      <button style="font-size:16px;padding:8px 16px;">
-        Add to Google Wallet
-      </button>
-    </a>
-  `);
+   // ⇨ **Return JSON** instead of HTML
+ res.json({ saveUrl });
 });
 
 app.listen(PORT, () => {
