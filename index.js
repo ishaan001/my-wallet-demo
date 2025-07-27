@@ -49,6 +49,10 @@ async function ensureClass() {
   }
 }
 
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'Wallet Pass API is running' });
+});
+
 app.post('/create', async (req, res) => {
   try {
     const { title, subtitle } = req.body;
