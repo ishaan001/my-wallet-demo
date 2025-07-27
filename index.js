@@ -1,11 +1,14 @@
 // index.js
 require('dotenv').config();
 const express       = require('express');
+const cors           = require('cors');
 const { GoogleAuth }= require('google-auth-library');
 const jwt           = require('jsonwebtoken');
 
 const app      = express();
 const PORT     = process.env.PORT || 3000;
+// enable CORS for _all_ routes and origins
+app.use(cors());
 const issuerId = process.env.ISSUER_ID;
 const classId  = `${issuerId}.simple_class`;
 const baseUrl  = 'https://walletobjects.googleapis.com/walletobjects/v1';
