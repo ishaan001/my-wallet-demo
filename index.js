@@ -1,7 +1,6 @@
 // index.js
 require('dotenv').config();
 const express       = require('express');
-const bodyParser    = require('body-parser');
 const { GoogleAuth }= require('google-auth-library');
 const jwt           = require('jsonwebtoken');
 
@@ -17,8 +16,7 @@ const auth = new GoogleAuth({
   scopes: 'https://www.googleapis.com/auth/wallet_object.issuer'
 });
 
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
+app.use(express.json());
 
 async function ensureClass() {
   const client = await auth.getClient();
@@ -52,54 +50,63 @@ async function ensureClass() {
 }
 
 app.post('/create', async (req, res) => {
-  await ensureClass();
-  const client = await auth.getClient();
+  try {
+    const { title, subtitle } = req.body;
+    if (!title || !subtitle) {
+      return res
+        .status(400)
+        .json({ error: 'Both "title" and "subtitle" are required.' });
+    }
 
-  // build a human‐friendly slug, then tack on a timestamp or uuid
-  const slug     = req.body.subtitle.replace(/[^\w.-]/g, '_');
-  const uniqueId = `${slug}_${Date.now()}`;  
-  const objectId = `${issuerId}.${uniqueId}`;
+    // 1) ensure your class exists
+    await ensureClass();
+    const client = await auth.getClient();
 
-  const genericObject = {
-    id: objectId,
-    classId: classId,
-    cardTitle: {
-      defaultValue: {
-        language: 'en-US',
-        value: req.body.subtitle
-      }
-    },
-    header: {
-      defaultValue: {
-        language: 'en-US',
-        value: req.body.details
-      }
-    },
-    textModulesData: [
-      { id: 'details',  body: req.body.details  },
-      { id: 'subtitle', body: req.body.subtitle }
-    ]
-  };
+    // 2) make a unique object ID
+    const slug     = title.replace(/[^\w.-]/g, '_');
+    const uniqueId = `${slug}_${Date.now()}`;
+    const objectId = `${issuerId}.${uniqueId}`;
 
-  // create the new object
-  await client.request({
-    url:    `${baseUrl}/genericObject`,
-    method: 'POST',
-    data:   genericObject
-  });
+    // 3) build your Wallet object
+    const genericObject = {
+      id:      objectId,
+      classId: classId,
+      cardTitle: {
+        defaultValue: { language: 'en-US', value: title }
+      },
+      header: {
+        defaultValue: { language: 'en-US', value: subtitle }
+      },
+      textModulesData: [
+        // you can drop or rename fields here as your class template expects
+        { id: 'details',  body: subtitle },
+        { id: 'subtitle', body: title }
+      ]
+    };
 
-  const key    = require(process.env.GOOGLE_APPLICATION_CREDENTIALS);
-  const claims = {
-    iss: serviceAccount.client_email,
-    aud: 'google',
-    typ: 'savetowallet',
-    payload: { genericObjects: [genericObject] }
-  };
-  const token   = jwt.sign(claims, serviceAccount.private_key, { algorithm: 'RS256' });
-  const saveUrl = `https://pay.google.com/gp/v/save/${token}`;
+    // 4) push it to Google
+    await client.request({
+      url:    `${baseUrl}/genericObject`,
+      method: 'POST',
+      data:   genericObject
+    });
 
-   // ⇨ **Return JSON** instead of HTML
- res.json({ saveUrl });
+    // 5) build your Save‑to‑Wallet JWT
+    const claims = {
+      iss:     serviceAccount.client_email,
+      aud:     'google',
+      typ:     'savetowallet',
+      payload: { genericObjects: [genericObject] }
+    };
+    const token   = jwt.sign(claims, serviceAccount.private_key, { algorithm: 'RS256' });
+    const saveUrl = `https://pay.google.com/gp/v/save/${token}`;
+
+    // 6) return just the URL
+    res.json({ saveUrl });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 app.listen(PORT, () => {
