@@ -1,0 +1,25 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Wallet Pass Demo</title>
+</head>
+<body>
+  <h1>Create a Custom Pass</h1>
+  <form action="/create" method="post">
+    <label>
+      Subtitle:<br/>
+      <input name="subtitle" required placeholder="e.g. Groceries">
+    </label>
+    <br/><br/>
+    <label>
+      Details:<br/>
+      <textarea name="details" rows="4" cols="40"
+        placeholder="Enter whatever details you like…"></textarea>
+    </label>
+    <br/><br/>
+    <button type="submit">Create pass</button>
+  </form>
+</body>
+</html>
